@@ -25,3 +25,6 @@ Thumbs.db
 # 生成物は再現可能なため成果物確認用に reports/ と slides/ の PDF はコミットする。
 # 一時ファイルのみ除外。
 *.tmp
+
+# 課題説明資料（機密・第三者開示禁止）は Public へ出さない
+README.pdf
