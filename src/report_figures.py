@@ -54,5 +54,36 @@ def make_horizon_figures(datasets=("ETTh1", "ETTh2")) -> None:
     print(f"[saved] {p}")
 
 
+def make_backtest_figure(datasets=("ETTh1", "ETTh2")) -> None:
+    """ローリング起点バックテストの skill（mean±std）を棒＋誤差棒で図示。"""
+    use_japanese_font()
+    FIGURES_DIR.mkdir(parents=True, exist_ok=True)
+    import numpy as np
+
+    fig, ax = plt.subplots(figsize=(8, 3.8))
+    colors = {"ETTh1": "#1f3a93", "ETTh2": "#c0392b"}
+    width = 0.36
+    for j, ds in enumerate(datasets):
+        with open(REPORTS_DIR / f"backtest_{ds}.json", encoding="utf-8") as f:
+            m = json.load(f)
+        hs = sorted(int(h) for h in m["horizons"])
+        means = [100 * m["horizons"][str(h)]["skill_mean"] for h in hs]
+        stds = [100 * m["horizons"][str(h)]["skill_std"] for h in hs]
+        x = np.arange(len(hs)) + (j - 0.5) * width
+        ax.bar(x, means, width, yerr=stds, capsize=4, label=ds,
+               color=colors.get(ds), alpha=0.85)
+        ax.set_xticks(np.arange(len(hs)))
+        ax.set_xticklabels([f"{h}h" for h in hs])
+    ax.axhline(0, color="k", lw=0.8)
+    ax.set_title(f"ローリング起点バックテスト({m['n_folds']}フォールド)：naive比改善率")
+    ax.set_xlabel("予測ホライズン"); ax.set_ylabel("MAE 改善率 mean±std (%)")
+    ax.legend()
+    fig.tight_layout()
+    p = FIGURES_DIR / "result_backtest_skill.png"
+    fig.savefig(p, dpi=130); plt.close(fig)
+    print(f"[saved] {p}")
+
+
 if __name__ == "__main__":
     make_horizon_figures()
+    make_backtest_figure()

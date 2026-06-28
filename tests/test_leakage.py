@@ -26,6 +26,21 @@ def test_chronological_split_is_ordered_and_disjoint():
     assert idx.train[1] > idx.train[0] and idx.test[1] > idx.test[0]
 
 
+def test_rolling_folds_are_ordered_and_expanding():
+    folds = data.rolling_origin_folds(17420, n_folds=5)
+    assert len(folds) >= 3
+    prev_test_end = -1
+    for f in folds:
+        # 各フォールド内で train < val < test、重複なし
+        assert f.train[0] == 0                      # 拡張窓（先頭から）
+        assert f.train[1] == f.val[0]
+        assert f.val[1] == f.test[0]
+        assert f.test[1] > f.test[0]
+        # test 窓は後方へ単調移動（互いに前進）
+        assert f.test[1] > prev_test_end
+        prev_test_end = f.test[1]
+
+
 def test_split_preserves_time_order_on_real_data():
     df = data.load_ett("ETTh1")
     idx = data.chronological_split(len(df))

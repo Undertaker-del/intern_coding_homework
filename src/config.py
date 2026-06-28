@@ -33,6 +33,10 @@ HORIZONS_MINUTE = [4, 24, 48, 96]
 TARGET_LAGS = [1, 2, 3, 6, 12, 24, 48, 168]
 LOAD_LAGS = [1, 24]
 ROLL_WINDOWS = [3, 6, 24]
+# 負荷の移動平均（熱蓄積=負荷の時間積分の代理）。
+# 反復2で [6,24,72] / [24] を検証したが、ETTh1 中期は改善する一方 ETTh2 は悪化し、
+# クロスデータで頑健な改善が得られなかったため不採用（空）。実験再現は config 変更のみ。
+LOAD_ROLL_WINDOWS: list[int] = []
 
 # 季節持続ベースラインの周期（1日のステップ数）
 SEASONAL_PERIOD_HOURLY = 24

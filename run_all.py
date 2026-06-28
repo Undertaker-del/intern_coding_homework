@@ -22,6 +22,7 @@ def main() -> None:
     for ds in ("ETTh1", "ETTh2"):
         step(f"EDA {ds}", ["src/eda.py", "--dataset", ds])
         step(f"学習・評価 {ds}", ["src/pipeline.py", "--dataset", ds])
+        step(f"バックテスト {ds}", ["src/backtest.py", "--dataset", ds])
     step("結果サマリ図", ["src/report_figures.py"])
     step("スライド HTML 生成", ["slides/build_slides.py"])
     step("PDF レンダリング", ["slides/render.py"])

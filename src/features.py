@@ -13,8 +13,8 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-from config import (DATE_COL, LOAD_COLS, LOAD_LAGS, ROLL_WINDOWS, TARGET,
-                    TARGET_LAGS)
+from config import (DATE_COL, LOAD_COLS, LOAD_LAGS, LOAD_ROLL_WINDOWS,
+                    ROLL_WINDOWS, TARGET, TARGET_LAGS)
 
 
 def _calendar_features(ts: pd.Series) -> pd.DataFrame:
@@ -39,6 +39,7 @@ def make_supervised(df: pd.DataFrame,
                     target_lags: list[int] = TARGET_LAGS,
                     load_lags: list[int] = LOAD_LAGS,
                     roll_windows: list[int] = ROLL_WINDOWS,
+                    load_roll_windows: list[int] = LOAD_ROLL_WINDOWS,
                     use_future_covariates: bool = False):
     """因果的特徴量 X と目的 y=OT(t+h)、対応する目的時刻 dates を返す。
 
@@ -64,6 +65,9 @@ def make_supervised(df: pd.DataFrame,
         feat[f"{col}_now"] = df[col]
         for L in load_lags:
             feat[f"{col}_lag{L}"] = df[col].shift(L)
+        # 負荷の移動平均（熱蓄積=過去負荷の時間積分の代理。因果 rolling）
+        for w in load_roll_windows:
+            feat[f"{col}_rmean{w}"] = df[col].rolling(w, min_periods=w).mean()
 
     # 任意: 未来の負荷（スケジュール既知の仮定。既定では使わない）
     if use_future_covariates and h >= 1:

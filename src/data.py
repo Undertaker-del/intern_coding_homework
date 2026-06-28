@@ -44,6 +44,32 @@ def chronological_split(n_rows: int,
     )
 
 
+def rolling_origin_folds(n_rows: int,
+                        n_folds: int = 5,
+                        val_frac: float = 0.10,
+                        test_frac: float = 0.10) -> list[SplitIndex]:
+    """拡張窓のローリング起点バックテスト用フォールドを返す。
+
+    各フォールドは train=系列先頭〜val_start（拡張）、val・test は固定幅の窓。
+    test 窓を test_frac ずつ後方へずらし、最後のフォールドが系列末尾で終わる。
+    学習量が不足するフォールド（train が test 窓より短い）は除外する。
+    """
+    test_size = max(1, int(n_rows * test_frac))
+    val_size = max(1, int(n_rows * val_frac))
+    folds: list[SplitIndex] = []
+    for i in range(n_folds):
+        test_end = n_rows - (n_folds - 1 - i) * test_size
+        test_start = test_end - test_size
+        val_end = test_start
+        val_start = val_end - val_size
+        if val_start <= test_size:  # 学習量が不足するフォールドは捨てる
+            continue
+        folds.append(SplitIndex(train=(0, val_start),
+                                val=(val_start, val_end),
+                                test=(test_start, test_end)))
+    return folds
+
+
 def slice_split(df: pd.DataFrame, idx: SplitIndex):
     """境界に従い 3 つの DataFrame を返す（重複なし・時刻順）。"""
     tr = df.iloc[idx.train[0]:idx.train[1]]

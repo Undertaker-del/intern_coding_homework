@@ -55,6 +55,8 @@ class LightGBMModel:
             random_state=SEED,
             n_jobs=-1,
             verbose=-1,
+            deterministic=True,     # 再現性: 実行間で同一結果を保証
+            force_row_wise=True,    # deterministic に必要
         )
         self.params.update(overrides)
         self._lgb = lgb

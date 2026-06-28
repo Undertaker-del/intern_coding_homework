@@ -29,10 +29,23 @@ m1 = load(REP / "metrics_ETTh1.json")
 m2 = load(REP / "metrics_ETTh2.json")
 e1 = load(REP / "eda_ETTh1.json")
 e2 = load(REP / "eda_ETTh2.json")
+bt1 = load(REP / "backtest_ETTh1.json")
+bt2 = load(REP / "backtest_ETTh2.json")
 
 
 def hz(m, h, model, key="mae"):
     return m["horizons"][str(h)][model][key]
+
+
+def bt(m, h):
+    return m["horizons"][str(h)]
+
+
+def fmt_bt(m, h):
+    """バックテスト skill を '+9.3%±7.7% (4/5)' 形式で整形。"""
+    r = bt(m, h)
+    return (f"{100 * r['skill_mean']:+.1f}%±{100 * r['skill_std']:.1f}% "
+            f"({r['n_positive']}/{r['n_total']})")
 
 
 def pct(x):
@@ -72,21 +85,22 @@ SLIDES.append(f'''<section class="slide cover">
   </div>
 </section>''')
 
-# 2. エグゼクティブサマリ
+# 2. エグゼクティブサマリ（5フォールド・バックテストの mean±std）
 SLIDES.append(slide(
-    "結論：油温予測は「数時間先」で実用価値があり、予防保全への移行は十分に有望",
+    "結論：油温予測は「中期（6〜12h先）」で安定した価値を出すが、24h先は頭打ち",
     f'''<ul class="big">
-      <li><b>① 短期(1h先)は持続予測が既に高精度</b>（油温の自己相関 lag1={e1['acf_lag1']:.2f}）。
-          ML の上乗せは小さく、<b>監視自動化の基盤</b>として堅牢。</li>
-      <li><b>② 価値の本体は 6〜12h 先</b>。持続予測が崩れる領域で LightGBM が
-          MAE を <b>ETTh1 約{pct(sk1_12)} / ETTh2 約{pct(sk2_6)}</b> 改善。
-          点検・是正の<b>リードタイムを確保</b>できる。</li>
-      <li><b>③ 24h 先は日次周期が支配し予測可能性が頭打ち</b>（改善 {pct(sk1_24)}〜{pct(sk2_24)}）。
-          さらなる先読みには<b>外気温予報など外部データ</b>が必要。</li>
-      <li><b>④ 最大のリスクは分布シフト</b>（季節で平均油温が大きく変化）。
-          固定閾値は不適、<b>定期再学習</b>が前提。</li>
+      <li><b>① 結果は5フォールドのローリング起点バックテストで検証</b>（単一分割の楽観を排除）。
+          以下は naive 比改善率の <b>平均±標準偏差（正のフォールド数）</b>。</li>
+      <li><b>② 中期(6〜12h先)が価値の本体</b>：
+          ETTh2 で <b>{fmt_bt(bt2, 12)}</b>・ETTh1 で <b>{fmt_bt(bt1, 12)}</b> 改善。
+          全/多フォールドで正＝<b>安定して持続予測を上回る</b>。点検リードタイムを確保。</li>
+      <li><b>③ 短期(1h先)は持続予測が既に高精度</b>（自己相関 lag1={e1['acf_lag1']:.2f}）。
+          改善は ETTh1 {fmt_bt(bt1, 1)}/ETTh2 {fmt_bt(bt2, 1)} と堅実だが小。監視自動化の基盤。</li>
+      <li><b>④ 24h 先は予測可能性が頭打ち</b>：ETTh1 {fmt_bt(bt1, 24)}・ETTh2 {fmt_bt(bt2, 24)}
+          ＝<b>持続予測を安定的に超えない</b>。先読みには外気温予報など外部データが必要。</li>
+      <li><b>⑤ 最大のリスクは分布シフト</b>（季節で平均油温が大きく変化）→ 固定閾値は不適・<b>定期再学習</b>前提。</li>
     </ul>
-    <div class="callout">データは公開ベンチマーク（顧客実データではない）。実装は時系列リーク防止を全工程で担保。</div>'''))
+    <div class="callout">データは公開ベンチマーク（顧客実データではない）。実装は時系列リーク防止を全工程で担保し pytest で常時検証。</div>'''))
 
 # 3. 目的・スコープ・前提
 SLIDES.append(slide(
@@ -180,37 +194,56 @@ SLIDES.append(slide(
         <ul class="tight">
           <li>持続予測を錨にするため、<b>最悪でも naive と同等</b>。</li>
           <li>日次サイクル等の<b>系統的変化のみ</b>を学習し改善。</li>
-          <li>実際、直接予測では naive に負けたが、差分予測で<b>全ホライズンで上回った</b>。</li>
+          <li>直接 OT(t+h) 予測は naive に負けたが、差分予測で<b>中期まで安定して上回る</b>
+              （24h は後述の通り天井）。</li>
         </ul>
       </div>
     </div>'''))
 
-# 8. 結果① ホライズン依存（価値の所在）
+# 8. 結果① バックテストで頑健性を検証（単一分割の楽観を排除）
 SLIDES.append(slide(
-    "予測の価値は中期(6〜12h先)で最大化し、24h先で頭打ちになる",
+    "5フォールドのバックテストで「中期は安定して有効・24hは頭打ち」を確認",
     f'''<div class="cols">
-      <div>{img("result_mae_vs_horizon.png")}<div class="cap">誤差のホライズン依存</div></div>
-      <div>{img("result_skill_vs_horizon.png")}<div class="cap">naive 比改善率(skill)</div></div>
-    </div>
-    <ul class="tight">
-      <li>短期：持続予測が強く ML の上乗せは小（ETTh1 1h={pct(hz(m1,1,'lightgbm','skill_vs_naive'))}）。</li>
-      <li>中期：持続予測が崩れる 6〜12h で<b>改善が最大</b>
-          （ETTh2 で <b>{pct(sk2_6)}前後</b>、ETTh1 で {pct(sk1_12)}前後）。</li>
-      <li>24h：日次周期で naive≒季節持続となり、<b>改善は数% に収束</b>。</li>
-    </ul>'''))
+      <div>{img("result_backtest_skill.png")}<div class="cap">ローリング起点バックテスト：naive比改善率 mean±std</div></div>
+      <div>
+        <h3>なぜバックテストか</h3>
+        <p class="muted" style="font-size:12.5px">単一分割は評価期間に依存する（ETTh1 のtestは穏やかな期間で持続予測が強い）。
+        起点をずらした5フォールドで mean±std を見ることで、<b>再現性のある主張</b>に変える。</p>
+        <ul class="tight">
+          <li>中期(6〜12h)：ETTh2 <b>{fmt_bt(bt2, 12)}</b>、ETTh1 <b>{fmt_bt(bt1, 12)}</b>
+              ＝多/全フォールドで正。</li>
+          <li>24h：ETTh1 <b>{fmt_bt(bt1, 24)}</b>、ETTh2 <b>{fmt_bt(bt2, 24)}</b>
+              ＝<b>持続予測を安定的に超えない</b>（単一分割の +1% は偶然）。</li>
+          <li>短期(1h)：堅実だが小（ETTh1 {fmt_bt(bt1, 1)}）。</li>
+        </ul>
+      </div>
+    </div>'''))
 
-# 9. 結果② 予測波形と説明性
+# 9. 結果② 予測波形・予測区間・説明性
 top1 = list(m1["horizons"]["12"]["lightgbm"]["top_features"].items())[:6]
 feat_li = "".join(f"<li>{k} <span class='muted'>({v:.0f})</span></li>" for k, v in top1)
+iv6 = m2["horizons"]["6"]["lightgbm"]["interval"]
+iv24 = m2["horizons"]["24"]["lightgbm"]["interval"]
+mase_lgbm = m2["horizons"]["6"]["lightgbm"]["mase"]
+mase_naive = m2["horizons"]["6"]["naive_persistence"]["mase"]
 SLIDES.append(slide(
-    "予測は妥当で、要因も解釈可能（直近変動・時刻・日平均水準・季節）",
+    "点予測に加え「予測区間」で不確実性も提示でき、要因も解釈可能",
     f'''<div class="cols">
-      <div>{img("pred_ETTh2_h6.png")}<div class="cap">ETTh2 6h先：実測 vs 予測 vs naive</div></div>
+      <div>{img("pred_ETTh2_h6.png")}<div class="cap">ETTh2 6h先：実測・予測・P10–P90 区間</div></div>
       <div>
-        <h3>LightGBM 重要度 上位（ETTh1, 12h先・gain）</h3>
-        <ol class="feat">{feat_li}</ol>
-        <p class="muted">短期は「直近の変動・時刻」、長期は「日平均水準・季節」が支配。
-        物理的直感（熱慣性＋外気温）と整合し、ブラックボックスではない。</p>
+        <h3>予測区間（分位点回帰 P10/P90）</h3>
+        <ul class="tight">
+          <li>被覆率 6h={iv6['coverage']:.2f}（名目0.80）、幅は
+              <b>{iv6['mean_width']:.1f}°C(6h)→{iv24['mean_width']:.1f}°C(24h)</b> と
+              不確実性の増大を定量化。</li>
+          <li>MASE(6h)：LightGBM <b>{mase_lgbm:.2f}</b> vs naive {mase_naive:.2f}
+              （基準=1段 in-sample naive。多段予測ゆえ1超は当然で、
+              <b>naive を大幅に下回る</b>＝相対的に良好。系列間比較可）。</li>
+        </ul>
+        <h3>重要度上位（ETTh1,12h・gain）</h3>
+        <ol class="feat" style="font-size:12px">{feat_li}</ol>
+        <p class="muted" style="font-size:11.5px">短期は直近変動・時刻、長期は日平均水準・季節が支配。
+        物理直感（熱慣性＋外気温）と整合し説明可能。</p>
       </div>
     </div>'''))
 
@@ -229,29 +262,31 @@ SLIDES.append(slide(
     <div class="callout">注：絶対温度の閾値は分布シフトに弱いため、運用では
       <b>季節・期間で基準を更新</b>し、予測値ランキングと併用する設計を推奨。</div>'''))
 
-# 11. 工夫・意思決定まとめ
+# 11. 工夫・意思決定まとめ（検証ループの実践）
 SLIDES.append(slide(
-    "工夫の要点：リーク遮断・差分予測・上限実験・データ駆動の報告",
+    "工夫の要点：1発出しでなく「仮説→検証→採否」の反復で結論を固めた",
     '''<ul class="big">
-      <li><b>時系列リークの体系的遮断</b>を自動テスト（pytest）で恒常的に検証
+      <li><b>時系列リークの体系的遮断</b>を自動テスト（pytest 17件）で恒常検証
           （未来不参照・分割整合・train限定スケーリング）。</li>
-      <li><b>差分予測</b>でベースライン未達を解消し、全ホライズンで naive 超え。</li>
-      <li><b>未来負荷を既知とした上限実験</b>で「どの情報が価値を生むか」を切り分け。</li>
-      <li><b>報告数値は metrics.json から自動注入</b>。コードと報告の乖離を排除（再現性）。</li>
-      <li><b>セキュリティ</b>：公開データのみ・秘密情報非混入・.gitignore 徹底で
-          Public リポジトリでも情報漏洩リスクなし。</li>
+      <li><b>差分予測</b>で直接予測のベースライン未達を解消（中期まで安定して naive 超え）。</li>
+      <li><b>5フォールド・バックテスト</b>で単一分割の楽観（24h +1%）を是正し、再現性を担保。</li>
+      <li><b>仮説を棄却する勇気</b>：負荷の移動平均（熱蓄積）特徴を検証→ ETTh1 改善も ETTh2 悪化で
+          <b>交差検証上の頑健な改善なしと判断し不採用</b>。ハイパラ探索も現行が近最適と確認。</li>
+      <li><b>予測区間・MASE・未来負荷の上限実験</b>を追加し、価値と限界を多面的に定量化。</li>
+      <li><b>データ駆動の報告</b>（metrics/backtest JSON から自動注入）＋<b>セキュリティ</b>
+          （公開データのみ・秘密非混入・機密PDF除外）。</li>
     </ul>'''))
 
 # 12. 限界と改善方針
 SLIDES.append(slide(
-    "限界は明確で、次の一手も具体化できている",
+    "限界はバックテストで明確化済み、次の一手も具体化できている",
     f'''<div class="cols">
       <div>
-        <h3>現時点の限界</h3>
+        <h3>現時点の限界（実測に基づく）</h3>
         <ul class="tight">
-          <li><b>24h 以上の先読みは頭打ち</b>（外部要因の情報不足）。</li>
-          <li><b>分布シフト</b>で固定閾値・固定モデルが劣化。</li>
-          <li>評価は単一の時系列分割（期間依存。ETTh1 の test は穏やかな期間）。</li>
+          <li><b>24h 先は持続予測を安定的に超えない</b>（外部要因の情報不足。バックテストで確認）。</li>
+          <li><b>分布シフト</b>（季節で平均油温が大きく変化）で固定閾値・固定モデルが劣化。</li>
+          <li>予測区間は<b>やや過小被覆</b>（名目80%に対し0.73〜0.78）。較正余地あり。</li>
           <li>異常・故障ラベルが無く、保全効果は代理指標での評価。</li>
         </ul>
       </div>
@@ -259,8 +294,8 @@ SLIDES.append(slide(
         <h3>今後の改善方針</h3>
         <ul class="tight">
           <li><b>外気温予報・運転計画</b>等の外部共変量を追加（24h+ の鍵）。</li>
-          <li><b>ローリング起点 CV ＋ 定期再学習</b>で非定常に追従。</li>
-          <li>分位点回帰で<b>予測区間</b>を提供し、リスク判断を支援。</li>
+          <li><b>定期再学習</b>＋ローリング起点 CV を運用に組込み非定常へ追従。</li>
+          <li><b>コンフォーマル予測</b>で区間を較正し被覆保証を付与。</li>
           <li>系列特化モデル（DLinear/PatchTST 等）との比較を本実装フェーズで実施。</li>
           <li>実故障データと接続し、<b>保全 KPI（停止回避・寿命延伸）</b>で再評価。</li>
         </ul>
@@ -274,10 +309,10 @@ SLIDES.append(slide(
       <li>データ：ETT (Electricity Transformer Temperature), zhouhaoyi/ETDataset (GitHub, MIT License)。
           Informer (AAAI 2021) で公開されたベンチマーク。</li>
       <li>手法：LightGBM (Ke et al., 2017)、勾配ブースティング決定木。</li>
-      <li>再現：<code>py -3.12 -m pytest tests -q</code> →
-          <code>src/eda.py</code> → <code>src/pipeline.py --dataset ETTh1/ETTh2</code> →
-          <code>src/report_figures.py</code>。</li>
-      <li>本資料の数値は <code>reports/metrics_*.json</code> から自動生成。</li>
+      <li>再現：<code>py -3.12 run_all.py</code>（テスト→EDA→学習評価→バックテスト→図→スライド）。
+          個別は <code>src/pipeline.py</code> / <code>src/backtest.py --dataset ETTh1/ETTh2</code>。</li>
+      <li>本資料の数値は <code>reports/metrics_*.json</code> と <code>reports/backtest_*.json</code> から自動生成。
+          評価=5フォールド ローリング起点バックテスト（mean±std）。</li>
     </ul>
     <div class="callout">追加データは未使用。利用する場合は出典を明記する方針。</div>'''))
 

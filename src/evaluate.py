@@ -16,11 +16,37 @@ def rmse(y_true: np.ndarray, y_pred: np.ndarray) -> float:
     return float(np.sqrt(np.mean(d * d)))
 
 
+def mase(y_true: np.ndarray, y_pred: np.ndarray,
+         y_train: np.ndarray, m: int = 1) -> float:
+    """MASE (Hyndman & Koehler, 2006)。
+
+    分母 = 学習系列の in-sample m 段ナイーブ平均絶対誤差で MAE を正規化。
+    MASE < 1 で in-sample ナイーブを上回る。スケールフリーで系列間比較が可能。
+    """
+    yt = np.asarray(y_train, dtype=float)
+    denom = np.mean(np.abs(yt[m:] - yt[:-m]))
+    if denom == 0:
+        return float("nan")
+    return mae(y_true, y_pred) / denom
+
+
 def skill(mae_model: float, mae_baseline: float) -> float:
     """skill = 1 - MAE_model / MAE_baseline。>0 でベースライン超え。"""
     if mae_baseline == 0:
         return float("nan")
     return 1.0 - mae_model / mae_baseline
+
+
+def interval_metrics(y_true: np.ndarray, lower: np.ndarray,
+                     upper: np.ndarray, nominal: float) -> dict:
+    """予測区間の被覆率(coverage)と平均幅。coverage≈nominal が良い較正。"""
+    yt = np.asarray(y_true)
+    inside = (yt >= np.asarray(lower)) & (yt <= np.asarray(upper))
+    return {
+        "nominal": round(nominal, 3),
+        "coverage": round(float(np.mean(inside)), 4),
+        "mean_width": round(float(np.mean(np.asarray(upper) - np.asarray(lower))), 4),
+    }
 
 
 def threshold_alarm_metrics(y_true: np.ndarray, y_pred: np.ndarray,
