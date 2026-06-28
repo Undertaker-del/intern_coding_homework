@@ -1,0 +1,27 @@
+# --- 秘密情報・認証情報（Public リポジトリへ絶対に出さない） ---
+.env
+.env.*
+*.key
+*.pem
+*.pfx
+secrets*.json
+credentials*.json
+*token*
+*secret*
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ipynb_checkpoints/
+
+# --- OS ---
+.DS_Store
+Thumbs.db
+
+# 生成物は再現可能なため成果物確認用に reports/ と slides/ の PDF はコミットする。
+# 一時ファイルのみ除外。
+*.tmp

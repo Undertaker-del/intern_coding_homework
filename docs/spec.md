@@ -1,0 +1,52 @@
+# spec.md — ETT 油温予測 PoC（仕様契約）
+
+> 真実の源泉。WHAT / WHY のみを書く。HOW は `design.md`。
+
+## ユーザーストーリー
+クライアント（電力用変圧器の運用・保全部門。ML リテラシーあり）として、
+変圧器のオイル温度 (OT) を**事前に予測**できれば、閾値監視中心の事後保全から
+**予測に基づく予防保全**へ移行できるか、その価値の大きさを PoC で判断したい。
+
+## 入出力型
+- 入力: ETT データセット（`data/ETTh1,h2,m1,m2.csv`）。列 = `date, HUFL, HULL, MUFL, MULL, LUFL, LULL, OT`。
+  - OT = oil temperature（目的変数, °C）。他6列 = 各種負荷（High/Middle/Low × Useful/Useless Load）。
+- 出力:
+  1. リーク安全な予測パイプライン（学習・評価・図表・metrics）。
+  2. クライアント向け PoC 報告スライド（PDF, メッセージ&ボディ構成）。
+  3. `reports/metrics.json`（全モデル×全ホライズンの MAE/RMSE/skill）。
+
+## 予測タスクの定義（合理的仮定として明記）
+PDF注記「t=T の油温予測に t=T の特徴量を使ってよい」を踏まえ、2 タスクで検証する。
+- **T-FORECAST（主タスク）**: 時刻 t までの情報のみを使い、`OT(t+h)` を予測（自己回帰）。
+  ホライズン h ∈ {1, 24}（ETTh は時間粒度なので 1h 先・24h 先）。
+  → 予防保全に直結する「将来予測」価値の本体。
+- **T-NOWCAST（補助タスク, ソフトセンサ）**: 同時刻の負荷 `load(t)` から `OT(t)` を回帰。
+  注記が許す「t=T 特徴量の利用」を最大限使った場合の上限的説明力を測る。
+  → 「OT は瞬時負荷でどこまで説明できるか＝センサ冗長化の価値」を定量化。
+
+## 受け入れ基準（AC）
+- **AC-1（リーク無し・最重要）**: 特徴量行列に目的時刻以降の OT が一切含まれない。分割は時系列順で
+  `max(train.date) < min(val.date) < min(test.date)`、重複なし。スケーラは train のみで fit。
+- **AC-2（ベースライン超え）**: 主タスクで LightGBM の test MAE が、素朴持続予測 (naive persistence)
+  および季節持続 (seasonal naive, 24h) を全ホライズンで下回る（skill > 0）。
+- **AC-3（再現性）**: 乱数シード固定で 2 回実行して test MAE が一致（相対差 < 1e-6）。
+- **AC-4（堅牢性）**: ETTh1 で構築した手法が ETTh2 でもベースラインを超える（過適合でない）。
+- **AC-5（セキュリティ/データリーク防止）**: Public リポジトリに秘密情報・認証情報・PII を一切含めない。
+  使用データは公開ベンチマーク（顧客実データではない）である旨を報告書に明記。追加データ利用時は出典明記。
+- **AC-6（成果物）**: 報告スライド PDF が「EDA示唆 / アプローチ妥当性 / 構築結果 / 工夫・意思決定 / 限界・改善方針」の
+  5 観点を全て被覆。
+
+## VerifyCommand（loop の終了条件）
+```
+py -3.12 -m pytest tests -q
+```
+が全 green。加えて成果物検証:
+```
+py -3.12 src/pipeline.py --dataset ETTh1   # metrics.json と figures を生成、AC-2 を表示
+py -3.12 src/pipeline.py --dataset ETTh2   # AC-4 を確認
+py -3.12 slides/render.py                  # PoC_report.pdf 生成
+```
+
+## スコープ外
+- リアルタイム推論サービング/API 化、GPU 必須の大規模 Transformer 学習。
+- OT 以外の多変量同時予測（OT に集中）。
