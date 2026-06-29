@@ -69,6 +69,45 @@ def test_planted_leak_is_detectable():
     assert clean > 1.0, "通常版が既に低すぎる=潜在リーク疑い"
 
 
+def test_wrapper_matches_raw_lightgbm():
+    """自前 LightGBMModel ラッパーの予測が生 lightgbm と完全一致（実装バグ防止）。"""
+    import lightgbm as lgb
+    from config import SEED
+
+    df = data.load_ett("ETTh2")
+    idx = data.chronological_split(len(df))
+    sc = data.StandardScalerFrame().fit(df.iloc[:idx.train[1]], [TARGET] + LOAD_COLS)
+    dfs = sc.transform(df)
+    X, y, dates = features.make_supervised(dfs, horizon=6)
+    freq = df["date"].iloc[1] - df["date"].iloc[0]
+    base = pd.to_datetime(dates) - 6 * freq
+    tre = df["date"].iloc[idx.train[1] - 1]; vae = df["date"].iloc[idx.val[1] - 1]
+    trm = base <= tre; vam = (base > tre) & (base <= vae); tem = base > vae
+    dtr = y[trm].to_numpy() - X[trm]["OT_now"].to_numpy()
+    dva = y[vam].to_numpy() - X[vam]["OT_now"].to_numpy()
+
+    wrapped = models.LightGBMModel().fit(X[trm], dtr, eval_set=[(X[vam], dva)])
+    params = dict(objective="regression_l1", n_estimators=600, learning_rate=0.05,
+                  num_leaves=31, min_child_samples=50, subsample=0.8, subsample_freq=1,
+                  colsample_bytree=0.8, reg_lambda=1.0, random_state=SEED, n_jobs=-1,
+                  verbose=-1, deterministic=True, force_row_wise=True)
+    raw = lgb.LGBMRegressor(**params)
+    raw.fit(X[trm], dtr, eval_set=[(X[vam], dva)],
+            callbacks=[lgb.early_stopping(50, verbose=False)])
+    assert np.allclose(wrapped.predict(X[tem]), raw.predict(X[tem]))
+
+
+def test_delta_beats_direct_target():
+    """差分予測が直接予測より明確に良い（設計判断の検証）。"""
+    import verify_all as va
+
+    df = data.load_ett("ETTh1")
+    idx = data.chronological_split(len(df))
+    delta = va._fold_skill(df, 6, idx, direct=False)
+    direct = va._fold_skill(df, 6, idx, direct=True)
+    assert delta > 0 > direct  # 差分は正、直接は naive 未満
+
+
 def test_backtest_fold_is_deterministic():
     df = data.load_ett("ETTh1")
     fold = data.rolling_origin_folds(len(df), n_folds=5)[2]
