@@ -1,0 +1,69 @@
+{
+  "dataset": "ETTh2",
+  "early_warning": {
+    "threshold_C": 44.69,
+    "test_weeks": 20.7,
+    "horizons": {
+      "6": {
+        "n_events": 96,
+        "model": {
+          "precision": 0.833,
+          "recall": 0.625,
+          "false_alarms_per_week": 0.58,
+          "auc_pr": 0.817
+        },
+        "persistence": {
+          "precision": 0.211,
+          "recall": 0.198,
+          "false_alarms_per_week": 3.42
+        }
+      },
+      "12": {
+        "n_events": 96,
+        "model": {
+          "precision": 0.667,
+          "recall": 0.354,
+          "false_alarms_per_week": 0.82,
+          "auc_pr": 0.589
+        },
+        "persistence": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "false_alarms_per_week": 4.2
+        }
+      },
+      "24": {
+        "n_events": 96,
+        "model": {
+          "precision": 0.581,
+          "recall": 0.562,
+          "false_alarms_per_week": 1.88,
+          "auc_pr": 0.565
+        },
+        "persistence": {
+          "precision": 0.586,
+          "recall": 0.531,
+          "false_alarms_per_week": 1.74
+        }
+      }
+    }
+  },
+  "fault_detection": {
+    "fault_C": 6.0,
+    "ramp_days": 14,
+    "models": {
+      "autoregressive": {
+        "fault_visible_in_residual_C": 0.137,
+        "fault_visible_pct": 2.3,
+        "pre_fault_noise_sigma_C": 0.673,
+        "signal_to_noise": 0.2
+      },
+      "soft_sensor": {
+        "fault_visible_in_residual_C": 4.1,
+        "fault_visible_pct": 68.3,
+        "pre_fault_noise_sigma_C": 4.836,
+        "signal_to_noise": 0.85
+      }
+    }
+  }
+}

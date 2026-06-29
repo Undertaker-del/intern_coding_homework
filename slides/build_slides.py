@@ -292,18 +292,53 @@ SLIDES.append(slide(
 
 # 10. 業務価値
 SLIDES.append(slide(
-    "高温時間帯を事前に絞り込め、点検対象の優先順位付けに使える",
-    f'''<ul class="big">
-      <li>テスト期間の<b>上位10%の高温時間帯</b>を 12h 先に検知する性能（ETTh1）：
-          <b>LightGBM F1={alarm1_lgbm['f1']:.2f}（適合率{alarm1_lgbm['precision']:.2f}/再現率{alarm1_lgbm['recall']:.2f}）</b>、
-          単純持続 F1={alarm1_naive['f1']:.2f}。</li>
-      <li>用途：閾値超過の<b>事前アラート</b>と<b>点検優先度</b>付け。
-          連続監視の自動化で、経験則ベースの見落とし・過検知を低減。</li>
-      <li>運用設計：誤報コストと見逃しコストに応じて<b>閾値を調整可能</b>
-          （Precision/Recall のトレードオフを運用側が選択）。</li>
-    </ul>
-    <div class="callout">注：絶対温度の閾値は分布シフトに弱いため、運用では
-      <b>季節・期間で基準を更新</b>し、予測値ランキングと併用する設計を推奨。</div>'''))
+    "誰が何のために使うか：用途は2つ。早期警報は今すぐ有効、異常検知は要追加データ",
+    '''<div class="cols">
+      <div>
+        <h3>想定ユーザーと用途</h3>
+        <ul class="tight">
+          <li><b>運用オペレーター（制御室）</b>：高油温の<b>事前警報</b>→負荷抑制・冷却強化。
+              必要なのは MAE でなく<b>h時間前の検知率と低誤報</b>。</li>
+          <li><b>信頼性技師／設備管理</b>：<b>劣化・異常の早期検知</b>（予防保全の本丸）。
+              期待温度からの<b>残差</b>で兆候を捉える。</li>
+          <li>保全計画担当：点検の<b>優先順位付け</b>（リスクランキング）。</li>
+        </ul>
+        <div class="callout2" style="font-size:12px">「業務で誰が何に使うか」を起点に、
+          MAE ではなく<b>用途別の性能指標</b>で検証した。</div>
+      </div>
+      <div>
+        <h3>検証の結論（用途別）</h3>
+        <ul class="tight">
+          <li><b>① 早期警報＝今すぐ有効</b>。変動大の変圧器で実証済（次スライド）。</li>
+          <li><b>② 異常検知＝今のデータでは不足</b>。早期警報に最適な<b>自己回帰モデルは
+              故障を「追従吸収」し検知不能</b>（次スライドで実証）。
+              ソフトセンサが正解だが<b>外気温データ</b>が要る。</li>
+          <li>→ <b>段階導入</b>：まず早期警報を実装、異常検知はフェーズ2（外部データ取得後）。</li>
+        </ul>
+      </div>
+    </div>'''))
+
+# 10b. 用途別検証の実証
+be = load(REP / "business_eval.json")
+ew6 = be["early_warning"]["horizons"]["6"]
+fd = be["fault_detection"]["models"]
+SLIDES.append(slide(
+    "実証：早期警報は6h前に検知率3倍・誤報週1件未満／自己回帰は故障の98%を吸収",
+    f'''<div class="cols">
+      <div>{img("result_business.png")}<div class="cap">用途①早期警報の検知率／用途②合成故障への残差</div></div>
+      <div>
+        <ul class="tight">
+          <li><b>用途①早期警報(ETTh2)</b>：高温(閾値{be['early_warning']['threshold_C']:.0f}°C)を
+              <b>6h前に再現率{ew6['model']['recall']:.0%}・適合率{ew6['model']['precision']:.0%}・
+              誤報{ew6['model']['false_alarms_per_week']}件/週</b>。
+              持続予測は再現率{ew6['persistence']['recall']:.0%}（先読み不可）。</li>
+          <li><b>用途②異常検知</b>：合成故障(+{be['fault_detection']['fault_C']:.0f}°Cドリフト)のうち
+              残差に現れる量＝<b>自己回帰{fd['autoregressive']['fault_visible_pct']:.0f}%（吸収し検知不能）</b>、
+              <b>ソフトセンサ{fd['soft_sensor']['fault_visible_pct']:.0f}%</b>（反応するがSN比{fd['soft_sensor']['signal_to_noise']}で実用不足）。</li>
+          <li>含意：<b>用途で最適モデルが異なる</b>。予防保全には外気温＋熱モデルが必要。</li>
+        </ul>
+      </div>
+    </div>'''))
 
 # 11. 工夫・意思決定まとめ（検証ループの実践）
 SLIDES.append(slide(
@@ -360,7 +395,7 @@ SLIDES.append(slide(
           Informer (AAAI 2021) で公開されたベンチマーク。</li>
       <li>手法：LightGBM (Ke et al., 2017)、勾配ブースティング決定木。</li>
       <li>再現：<code>py -3.12 run_all.py</code>（テスト→EDA→学習評価→バックテスト→分割感度→図→スライド）。
-          個別は <code>src/pipeline.py</code> / <code>src/backtest.py</code> / <code>src/split_sensitivity.py</code>。</li>
+          個別は <code>pipeline</code>/<code>backtest</code>/<code>split_sensitivity</code>/<code>verify_all</code>/<code>business_eval</code>。</li>
       <li>本資料の数値は <code>reports/metrics_*.json</code> と <code>reports/backtest_*.json</code> から自動生成。
           評価=5フォールド ローリング起点バックテスト（mean±std）。</li>
     </ul>

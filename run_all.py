@@ -25,6 +25,7 @@ def main() -> None:
         step(f"バックテスト {ds}", ["src/backtest.py", "--dataset", ds])
     step("分割感度分析", ["src/split_sensitivity.py"])
     step("網羅検証(機構/品質/アブレーション)", ["src/verify_all.py"])
+    step("業務用途検証(早期警報/異常検知)", ["src/business_eval.py"])
     step("結果サマリ図", ["src/report_figures.py"])
     step("スライド HTML 生成", ["slides/build_slides.py"])
     step("PDF レンダリング", ["slides/render.py"])
