@@ -41,6 +41,17 @@ def test_rolling_folds_are_ordered_and_expanding():
         prev_test_end = f.test[1]
 
 
+def test_informer_split_borders():
+    """文献標準 12/4/4 分割: ETTh は 8640/2880/2880、順序・重複なし。"""
+    idx = data.informer_split("ETTh1", 17420)
+    assert idx.train == (0, 8640)
+    assert idx.val == (8640, 11520)
+    assert idx.test == (11520, 14400)
+    # ETTm は15分粒度で係数4
+    idxm = data.informer_split("ETTm1", 69680)
+    assert idxm.train == (0, 8640 * 4)
+
+
 def test_split_preserves_time_order_on_real_data():
     df = data.load_ett("ETTh1")
     idx = data.chronological_split(len(df))

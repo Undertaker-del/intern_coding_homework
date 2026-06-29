@@ -84,6 +84,33 @@ def make_backtest_figure(datasets=("ETTh1", "ETTh2")) -> None:
     print(f"[saved] {p}")
 
 
+def make_split_sensitivity_figure(datasets=("ETTh1", "ETTh2")) -> None:
+    """分割方法（時系列60/20/20 vs 文献Informer12/4/4）での skill を比較。"""
+    use_japanese_font()
+    FIGURES_DIR.mkdir(parents=True, exist_ok=True)
+    with open(REPORTS_DIR / "split_sensitivity.json", encoding="utf-8") as f:
+        m = json.load(f)
+    fig, axes = plt.subplots(1, len(datasets), figsize=(11, 3.6), sharey=True)
+    labels = {"chrono_60_20_20": "時系列60/20/20", "informer_12_4_4": "文献12/4/4"}
+    styles = {"chrono_60_20_20": ("#1f3a93", "o-"), "informer_12_4_4": ("#c0392b", "s--")}
+    for ax, ds in zip(axes, datasets):
+        for sname, row in m[ds].items():
+            hs = sorted(int(h) for h in row)
+            ys = [100 * row[str(h)] for h in hs]
+            c, st = styles[sname]
+            ax.plot(hs, ys, st, color=c, label=labels[sname])
+        ax.axhline(0, color="k", lw=0.8)
+        ax.set_title(f"{ds}: 分割方法への感度")
+        ax.set_xlabel("予測ホライズン(時間先)")
+        ax.legend(fontsize=8)
+    axes[0].set_ylabel("naive比改善率(%)")
+    fig.tight_layout()
+    p = FIGURES_DIR / "result_split_sensitivity.png"
+    fig.savefig(p, dpi=130); plt.close(fig)
+    print(f"[saved] {p}")
+
+
 if __name__ == "__main__":
     make_horizon_figures()
     make_backtest_figure()
+    make_split_sensitivity_figure()

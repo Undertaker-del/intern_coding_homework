@@ -44,6 +44,19 @@ def chronological_split(n_rows: int,
     )
 
 
+def informer_split(name: str, n_rows: int) -> SplitIndex:
+    """文献標準（Informer, AAAI2021）の 12/4/4 ヶ月分割。
+
+    ETTh は時間粒度、ETTm は15分粒度（係数4）。先頭20ヶ月を使用する。
+    結果が分割方法に依存しないことを確認するための比較用。
+    出典: zhouhaoyi/ETDataset, Informer2020 のデータ分割。
+    """
+    unit = 4 if name.startswith("ETTm") else 1
+    month = 30 * 24 * unit
+    b1, b2, b3 = 12 * month, 16 * month, 20 * month
+    return SplitIndex(train=(0, b1), val=(b1, b2), test=(b2, min(b3, n_rows)))
+
+
 def rolling_origin_folds(n_rows: int,
                         n_folds: int = 5,
                         val_frac: float = 0.10,

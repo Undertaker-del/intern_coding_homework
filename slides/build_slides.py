@@ -85,22 +85,22 @@ SLIDES.append(f'''<section class="slide cover">
   </div>
 </section>''')
 
-# 2. エグゼクティブサマリ（5フォールド・バックテストの mean±std）
+# 2. エグゼクティブサマリ（バックテスト＋分割感度で裏取り）
 SLIDES.append(slide(
-    "結論：油温予測は「中期（6〜12h先）」で安定した価値を出すが、24h先は頭打ち",
+    "結論：ML の価値は変圧器の「変動性」に依存。変動大なら大きく頑健、穏やかなら不確実",
     f'''<ul class="big">
-      <li><b>① 結果は5フォールドのローリング起点バックテストで検証</b>（単一分割の楽観を排除）。
-          以下は naive 比改善率の <b>平均±標準偏差（正のフォールド数）</b>。</li>
-      <li><b>② 中期(6〜12h先)が価値の本体</b>：
-          ETTh2 で <b>{fmt_bt(bt2, 12)}</b>・ETTh1 で <b>{fmt_bt(bt1, 12)}</b> 改善。
-          全/多フォールドで正＝<b>安定して持続予測を上回る</b>。点検リードタイムを確保。</li>
-      <li><b>③ 短期(1h先)は持続予測が既に高精度</b>（自己相関 lag1={e1['acf_lag1']:.2f}）。
-          改善は ETTh1 {fmt_bt(bt1, 1)}/ETTh2 {fmt_bt(bt2, 1)} と堅実だが小。監視自動化の基盤。</li>
-      <li><b>④ 24h 先は予測可能性が頭打ち</b>：ETTh1 {fmt_bt(bt1, 24)}・ETTh2 {fmt_bt(bt2, 24)}
+      <li><b>① 変動の大きい変圧器(ETTh2型)＝明確な価値</b>：6〜12h先で naive 比
+          <b>+54〜57%</b> 改善。5フォールド・バックテストでも文献標準分割でも<b>一貫して大きく正</b>。
+          点検リードタイムを確保できる。</li>
+      <li><b>② 穏やかで持続性の高い変圧器(ETTh1型)＝価値は不確実</b>：自己相関 lag1={e1['acf_lag1']:.2f}
+          で持続予測が極めて強い。時系列分割では +9% だが<b>文献標準分割では負</b>に転じ、
+          <b>評価期間に依存して頑健でない</b>。導入前に資産別の検証が必須。</li>
+      <li><b>③ 24h 先は予測可能性の天井</b>：どの分割でも naive 比 ほぼ 0〜負
           ＝<b>持続予測を安定的に超えない</b>。先読みには外気温予報など外部データが必要。</li>
-      <li><b>⑤ 最大のリスクは分布シフト</b>（季節で平均油温が大きく変化）→ 固定閾値は不適・<b>定期再学習</b>前提。</li>
+      <li><b>④ 最大のリスクは分布シフト</b>（季節で平均油温が大きく変化）→ 固定閾値は不適・<b>定期再学習</b>前提。</li>
     </ul>
-    <div class="callout">データは公開ベンチマーク（顧客実データではない）。実装は時系列リーク防止を全工程で担保し pytest で常時検証。</div>'''))
+    <div class="callout">この結論はバックテスト・シード・分割方法の感度分析で裏取り済み。
+      データは公開ベンチマーク（顧客実データではない）。リーク防止は全工程で pytest(21件) 検証。</div>'''))
 
 # 3. 目的・スコープ・前提
 SLIDES.append(slide(
@@ -122,7 +122,7 @@ SLIDES.append(slide(
           <li>「t=T の特徴量を使用してよい」を、<b>負荷は運用計画で既知</b>と解釈し、
               <b>未来負荷を与えた上限実験</b>も別途実施</li>
           <li>主結果は<b>過去情報のみ</b>で算出（運用上最も安全な前提）</li>
-          <li>分割は時系列順 60/20/20（シャッフル禁止）。文献の 12/4/4ヶ月分割でも傾向不変</li>
+          <li>分割は時系列順 60/20/20（シャッフル禁止）。文献標準 12/4/4 分割でも検証（感度分析）</li>
           <li>MAPE は OT が 0/負を取るため不採用、MAE/RMSE(°C) を採用</li>
         </ul>
       </div>
@@ -219,6 +219,26 @@ SLIDES.append(slide(
       </div>
     </div>'''))
 
+# 8b. 結論の頑健性（分割感度）— 過大評価の回避
+SLIDES.append(slide(
+    "結論の頑健性を検証：ETTh2 の価値は分割に不変、ETTh1 の改善は分割依存で消える",
+    f'''<div class="cols">
+      <div>{img("result_split_sensitivity.png")}<div class="cap">時系列60/20/20 vs 文献Informer12/4/4 の skill</div></div>
+      <div>
+        <p class="muted" style="font-size:12.5px">「1つの分割で良かった」を結論にしない。
+        時系列分割と<b>文献標準(Informer 12/4/4)</b>を比較し、結論が分割に依存しないかを検証。</p>
+        <ul class="tight">
+          <li><b>ETTh2</b>：両分割で 6〜12h が +54〜57%＝<b>頑健</b>。価値の主張は信頼できる。</li>
+          <li><b>ETTh1</b>：時系列分割では +9% だが<b>文献分割では −6〜−9%</b>に反転。
+              <b>評価期間に依存し頑健でない</b>＝持続予測で十分な可能性。</li>
+          <li>含意：<b>資産の変動性レジームで価値が決まる</b>。導入判断は
+              資産別・期間横断の評価が前提。</li>
+        </ul>
+        <div class="callout2" style="font-size:12px">過大評価を避けるため、頑健でない改善は
+          「不確実」と明示する方針。</div>
+      </div>
+    </div>'''))
+
 # 9. 結果② 予測波形・予測区間・説明性
 top1 = list(m1["horizons"]["12"]["lightgbm"]["top_features"].items())[:6]
 feat_li = "".join(f"<li>{k} <span class='muted'>({v:.0f})</span></li>" for k, v in top1)
@@ -266,7 +286,7 @@ SLIDES.append(slide(
 SLIDES.append(slide(
     "工夫の要点：1発出しでなく「仮説→検証→採否」の反復で結論を固めた",
     '''<ul class="big">
-      <li><b>時系列リークの体系的遮断</b>を自動テスト（pytest 20件）で恒常検証。
+      <li><b>時系列リークの体系的遮断</b>を自動テスト（pytest 21件）で恒常検証。
           さらに<b>結果を独立監査</b>：純ノイズでモデルが理論下限を割らないこと＋
           故意リークが検出されること＋指標の独立再計算一致、で<b>「漏洩なし」を裏取り</b>。</li>
       <li><b>差分予測</b>で直接予測のベースライン未達を解消（中期まで安定して naive 超え）。</li>
@@ -285,7 +305,8 @@ SLIDES.append(slide(
       <div>
         <h3>現時点の限界（実測に基づく）</h3>
         <ul class="tight">
-          <li><b>24h 先は持続予測を安定的に超えない</b>（外部要因の情報不足。バックテストで確認）。</li>
+          <li><b>穏やかな資産(ETTh1)では価値が評価期間依存</b>で頑健でない（分割で符号反転）。</li>
+          <li><b>24h 先は持続予測を安定的に超えない</b>（外部要因の情報不足。全分割で確認）。</li>
           <li><b>分布シフト</b>（季節で平均油温が大きく変化）で固定閾値・固定モデルが劣化。</li>
           <li>予測区間は<b>やや過小被覆</b>（名目80%に対し0.73〜0.78）。較正余地あり。</li>
           <li>異常・故障ラベルが無く、保全効果は代理指標での評価。</li>
@@ -310,8 +331,8 @@ SLIDES.append(slide(
       <li>データ：ETT (Electricity Transformer Temperature), zhouhaoyi/ETDataset (GitHub, MIT License)。
           Informer (AAAI 2021) で公開されたベンチマーク。</li>
       <li>手法：LightGBM (Ke et al., 2017)、勾配ブースティング決定木。</li>
-      <li>再現：<code>py -3.12 run_all.py</code>（テスト→EDA→学習評価→バックテスト→図→スライド）。
-          個別は <code>src/pipeline.py</code> / <code>src/backtest.py --dataset ETTh1/ETTh2</code>。</li>
+      <li>再現：<code>py -3.12 run_all.py</code>（テスト→EDA→学習評価→バックテスト→分割感度→図→スライド）。
+          個別は <code>src/pipeline.py</code> / <code>src/backtest.py</code> / <code>src/split_sensitivity.py</code>。</li>
       <li>本資料の数値は <code>reports/metrics_*.json</code> と <code>reports/backtest_*.json</code> から自動生成。
           評価=5フォールド ローリング起点バックテスト（mean±std）。</li>
     </ul>
