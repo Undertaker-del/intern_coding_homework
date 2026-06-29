@@ -80,11 +80,17 @@ tests/          # リーク検証中心の pytest
 | 網羅 | Ridge vs LGBM / 差分 vs 直接 | LGBMが頑健に優位・差分は必須 | 設計を裏取り |
 | 網羅 | ETTm1バックテスト / 生lightgbm独立再計算 | 粒度汎化・実装バグなし | 裏取り |
 | 網羅 | データ品質（張り付き） | ETTm2はOT張り付き21.7% | 品質警告 |
+| 6 | **モデル比較**（Ridge/LGBM/MLP/DLinear を同一差分予測で） | LGBM総合最良。**DLinearはETTh1で最良**(h6 +14% > LGBM +9%)、MLPは過学習で全敗 | LGBM採用妥当・DLinearを将来候補に |
+| 6 | **強化学習の要否** | 本タスクは入力→将来値の教師あり回帰。RLは逐次意思決定（制御）向き | **不採用**（PoC範囲外と判断） |
+| 6 | **特徴量数の感度**（最小16/現行40/拡張110） | ETTh2は40で最良(110は過学習)、ETTh1は単調改善＝「多ければ良い」ではない | **現行40を採用**（頑健な妥協点） |
+| 6 | **予測区間の較正**（split-conformal） | 過小被覆0.74 → **名目0.80へ回復**（幅は同等〜微増） | **採用**（被覆保証を実務的に確保） |
 
 「効く施策だけ残し、効かない仮説は交差検証の証拠で棄却する」を徹底。
 追加検証で **ETTh1 の中期改善が評価期間に依存し頑健でない**ことが判明し、
 結論を「価値は資産の変動性レジーム依存」へと正直に修正した（過大評価の回避）。
 
 ## Verify（spec の VerifyCommand に対応）
-`pytest tests -q`（17件）green → `pipeline.py`(AC-2/4) → `backtest.py`(AC-7) →
-`report_figures.py` → `render.py` で PDF。一括は `run_all.py`。
+`pytest tests -q`（23件）green → `pipeline.py`(AC-2/4) → `backtest.py`(AC-7) →
+`split_sensitivity.py` → `verify_all.py` → `business_eval.py` →
+`model_compare.py` / `feature_sensitivity.py` / `conformal.py` →
+`report_figures.py` / `extra_figures.py` → `render.py` で PDF。一括は `run_all.py`。

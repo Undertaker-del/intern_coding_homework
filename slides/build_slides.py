@@ -340,6 +340,72 @@ SLIDES.append(slide(
       </div>
     </div>'''))
 
+# 10c. モデル選択の妥当性（DLinear/MLP まで比較）
+mc = load(REP / "model_compare.json")
+SLIDES.append(slide(
+    "モデル選択も検証：勾配ブースティングが総合最良、深層 DLinear が穏やか資産で拮抗",
+    f'''<div class="cols">
+      <div>{img("result_model_compare.png")}<div class="cap">Ridge/LightGBM/MLP/DLinear を同一の差分予測で比較（5フォールド平均）</div></div>
+      <div>
+        <p class="muted" style="font-size:12.5px">「なぜ LightGBM か」を実証。全モデルを同じ差分予測に統一し、
+        モデルクラスの差だけを 5 フォールドで比較した。</p>
+        <ul class="tight">
+          <li><b>LightGBM が総合最良</b>：ETTh2 で +{100*mc['ETTh2']['h6']['lgbm']:.0f}%（h6）と最高、
+              ETTh1 でも安定して正。<b>表形式・非線形・少データに強く本命として妥当</b>。</li>
+          <li><b>DLinear（系列分解＋線形, AAAI2023）</b>は<b>穏やかな ETTh1 で逆に最良</b>
+              （h6 +{100*mc['ETTh1']['h6']['dlinear']:.0f}% &gt; LightGBM +{100*mc['ETTh1']['h6']['lgbm']:.0f}%）。
+              日内サイクルが支配的な資産では生波形の線形分解が効く。</li>
+          <li><b>MLP は過学習で全敗</b>（多くで負）。データ規模に対し過剰。</li>
+          <li>含意：<b>資産レジームで最適モデルも変わる</b>→本実装は両者を持ち選択/アンサンブル。</li>
+        </ul>
+        <div class="callout2" style="font-size:12px"><b>強化学習は不採用</b>：本タスクは入力→将来値の
+          教師あり回帰。RL（逐次意思決定）が活きるのは予測を踏まえた<b>下流の制御</b>であり PoC 範囲外。</div>
+      </div>
+    </div>'''))
+
+# 10d. 特徴量数の感度（増やす/減らす）
+fs = load(REP / "feature_sensitivity.json")
+SLIDES.append(slide(
+    "特徴量は「増やすほど良い」ではない：穏やか資産は増で改善、変動資産は40前後が最適",
+    f'''<div class="cols">
+      <div>{img("result_feature_sensitivity.png")}<div class="cap">最小16 / 現行40 / 拡張110 特徴量の skill（6/12h平均）</div></div>
+      <div>
+        <p class="muted" style="font-size:12.5px">特徴量を最小・現行・拡張の3水準で 5 フォールド比較し、
+        過不足を検証した。</p>
+        <ul class="tight">
+          <li><b>ETTh2（変動大）は逆U字</b>：現行40で最良(+{100*fs['ETTh2']['current']['h6']:.0f}%)、
+              110に増やすと<b>+{100*fs['ETTh2']['expanded']['h6']:.0f}%へ悪化</b>＝過学習。</li>
+          <li><b>ETTh1（穏やか）は単調改善</b>：16→40→110 で +{100*fs['ETTh1']['minimal']['h6']:.0f}→
+              +{100*fs['ETTh1']['current']['h6']:.0f}→+{100*fs['ETTh1']['expanded']['h6']:.0f}%。
+              シグナルが弱く<b>多特徴が効く</b>。</li>
+          <li><b>採用＝現行40</b>：両レジームで頑健な妥協点。一方を伸ばす拡張は他方を壊すため、
+              <b>YAGNI＋頑健性</b>でこの水準を選択（負荷移動平均を棄却した判断と整合）。</li>
+        </ul>
+      </div>
+    </div>'''))
+
+# 10e. 予測区間の較正（改善実装）
+cf = load(REP / "conformal.json")
+cf6 = cf["horizons"]["6"]; cf24 = cf["horizons"]["24"]
+SLIDES.append(slide(
+    "限界を改善：split-conformal で予測区間の過小被覆を名目80%まで較正",
+    f'''<div class="cols">
+      <div>{img("result_conformal.png")}<div class="cap">分位点回帰（旧）vs split-conformal（改善）の実測被覆率</div></div>
+      <div>
+        <p class="muted" style="font-size:12.5px">分位点回帰の区間は系統的に過小被覆だった。
+        検量(val)集合の残差分位点で幅を決める <b>split-conformal</b> で較正した。</p>
+        <ul class="tight">
+          <li><b>被覆率を名目0.80へ回復</b>：6h {cf6['quantile']['coverage']:.2f}→
+              <b>{cf6['conformal']['coverage']:.2f}</b>、24h {cf24['quantile']['coverage']:.2f}→
+              <b>{cf24['conformal']['coverage']:.2f}</b>。幅は同等〜微増で済む。</li>
+          <li>分布のずれた検証期間でも<b>被覆保証を実務的に確保</b>。
+              運用時の「区間の信頼性」を担保できる。</li>
+          <li>時系列で交換可能性は厳密に成り立たないため、<b>直近窓での再較正</b>を運用に組込む前提。</li>
+        </ul>
+        <div class="callout2" style="font-size:12px">限界スライドで挙げた「過小被覆」を本実装で解消済み。</div>
+      </div>
+    </div>'''))
+
 # 11. 工夫・意思決定まとめ（検証ループの実践）
 SLIDES.append(slide(
     "工夫の要点：1発出しでなく「仮説→検証→採否」の反復で結論を固めた",
@@ -369,7 +435,8 @@ SLIDES.append(slide(
           <li><b>穏やかな資産(ETTh1)では価値が評価期間依存</b>で頑健でない（分割で符号反転）。</li>
           <li><b>24h 先は持続予測を安定的に超えない</b>（外部要因の情報不足。全分割で確認）。</li>
           <li><b>分布シフト</b>（季節で平均油温が大きく変化）で固定閾値・固定モデルが劣化。</li>
-          <li>予測区間は<b>系統的に過小被覆</b>（名目80%に対しfold平均0.74）。較正が必要。</li>
+          <li>予測区間は分位点回帰だと<b>過小被覆</b>（名目80%対fold平均0.74）だったが、
+              <b>split-conformal で名目80%へ較正済</b>（前スライド）。残る課題は分布シフト下の再較正運用。</li>
           <li><b>データ品質</b>：ETTm2 は OT の張り付き（連続同値）が<b>21.7%</b>＝
               センサ固着/前値補完の疑い。実データでは品質検証が前提。</li>
           <li>異常・故障ラベルが無く、保全効果は代理指標での評価。</li>
@@ -380,8 +447,8 @@ SLIDES.append(slide(
         <ul class="tight">
           <li><b>外気温予報・運転計画</b>等の外部共変量を追加（24h+ の鍵）。</li>
           <li><b>定期再学習</b>＋ローリング起点 CV を運用に組込み非定常へ追従。</li>
-          <li><b>コンフォーマル予測</b>で区間を較正し被覆保証を付与。</li>
-          <li>系列特化モデル（DLinear/PatchTST 等）との比較を本実装フェーズで実施。</li>
+          <li><b>コンフォーマル予測</b>で区間を較正（本PoCで実装済）→ 分布シフト追従の再較正を運用化。</li>
+          <li>系列特化モデル（DLinear を実装・比較済、ETTh1で最良）→ PatchTST 等へ拡張、レジーム別に選択。</li>
           <li>実故障データと接続し、<b>保全 KPI（停止回避・寿命延伸）</b>で再評価。</li>
         </ul>
       </div>
@@ -395,7 +462,10 @@ SLIDES.append(slide(
           Informer (AAAI 2021) で公開されたベンチマーク。</li>
       <li>手法：LightGBM (Ke et al., 2017)、勾配ブースティング決定木。</li>
       <li>再現：<code>py -3.12 run_all.py</code>（テスト→EDA→学習評価→バックテスト→分割感度→図→スライド）。
-          個別は <code>pipeline</code>/<code>backtest</code>/<code>split_sensitivity</code>/<code>verify_all</code>/<code>business_eval</code>。</li>
+          個別は <code>pipeline</code>/<code>backtest</code>/<code>split_sensitivity</code>/<code>verify_all</code>/<code>business_eval</code>/
+          <code>model_compare</code>/<code>feature_sensitivity</code>/<code>conformal</code>。</li>
+      <li>DLinear: Zeng et al., "Are Transformers Effective for Time Series Forecasting?", AAAI 2023。
+          コンフォーマル: Vovk et al. / split-conformal（検量集合の残差分位点で被覆保証）。</li>
       <li>本資料の数値は <code>reports/metrics_*.json</code> と <code>reports/backtest_*.json</code> から自動生成。
           評価=5フォールド ローリング起点バックテスト（mean±std）。</li>
     </ul>

@@ -1,0 +1,36 @@
+{
+  "ETTh1": {
+    "minimal": {
+      "n_features": 16,
+      "h6": 0.0428,
+      "h12": 0.0726
+    },
+    "current": {
+      "n_features": 40,
+      "h6": 0.0926,
+      "h12": 0.0923
+    },
+    "expanded": {
+      "n_features": 110,
+      "h6": 0.1259,
+      "h12": 0.1219
+    }
+  },
+  "ETTh2": {
+    "minimal": {
+      "n_features": 16,
+      "h6": 0.5191,
+      "h12": 0.4948
+    },
+    "current": {
+      "n_features": 40,
+      "h6": 0.5722,
+      "h12": 0.5423
+    },
+    "expanded": {
+      "n_features": 110,
+      "h6": 0.5455,
+      "h12": 0.5221
+    }
+  }
+}
