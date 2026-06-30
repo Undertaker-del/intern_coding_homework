@@ -22,6 +22,34 @@ def _load(name: str) -> dict:
         return json.load(f)
 
 
+def value_heatmap_fig() -> None:
+    """データ×ホライズンの skill ヒートマップ（バックテスト平均）。エグゼクティブサマリ用。"""
+    import json as _json
+    bt = {ds: _json.load(open(REPORTS_DIR / f"backtest_{ds}.json", encoding="utf-8"))
+          for ds in ("ETTh1", "ETTh2")}
+    hs = [1, 6, 12, 24]
+    rows = ["ETTh2\n(変動大)", "ETTh1\n(穏やか)"]
+    order = ["ETTh2", "ETTh1"]
+    M = np.array([[bt[ds]["horizons"][str(h)]["skill_mean"] for h in hs] for ds in order])
+    fig, ax = plt.subplots(figsize=(8.6, 2.9))
+    im = ax.imshow(M, cmap="RdYlGn", vmin=-0.6, vmax=0.6, aspect="auto")
+    ax.set_xticks(range(len(hs))); ax.set_xticklabels([f"{h}h先" for h in hs], fontsize=12)
+    ax.set_yticks(range(len(rows))); ax.set_yticklabels(rows, fontsize=12)
+    for i, ds in enumerate(order):
+        for j, h in enumerate(hs):
+            r = bt[ds]["horizons"][str(h)]
+            txt = f"{100*r['skill_mean']:+.0f}%\n±{100*r['skill_std']:.0f} ({r['n_positive']}/{r['n_total']})"
+            ax.text(j, i, txt, ha="center", va="center", fontsize=11,
+                    color="#16240f" if abs(M[i, j]) < 0.45 else "#fff", fontweight="bold")
+    ax.set_title("naive持続予測に対する改善率（5フォールド・バックテスト平均）", fontsize=12)
+    cb = fig.colorbar(im, ax=ax, fraction=0.025, pad=0.02)
+    cb.set_label("改善率", fontsize=10)
+    fig.tight_layout()
+    p = FIGURES_DIR / "result_value_heatmap.png"
+    fig.savefig(p, dpi=130); plt.close(fig)
+    print(f"[saved] {p}")
+
+
 def model_compare_fig() -> None:
     mc = _load("model_compare.json")
     cols = {"ridge": "#95a5a6", "lgbm": "#e67e22", "mlp": "#9b59b6", "dlinear": "#2f5cff"}
@@ -90,6 +118,7 @@ def conformal_fig() -> None:
 def make_all() -> None:
     use_japanese_font()
     FIGURES_DIR.mkdir(parents=True, exist_ok=True)
+    value_heatmap_fig()
     model_compare_fig()
     feature_sensitivity_fig()
     conformal_fig()

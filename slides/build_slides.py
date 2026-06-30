@@ -87,51 +87,51 @@ SLIDES.append(f'''<section class="slide cover">
 
 # 2. エグゼクティブサマリ（バックテスト＋分割感度で裏取り）
 SLIDES.append(slide(
-    "結論：ML の価値は変圧器の「変動性」に依存。変動大なら大きく頑健、穏やかなら不確実",
-    f'''<ul class="big">
-      <li><b>① 変動の大きい変圧器(ETTh2型)＝明確な価値</b>：6〜12h先で naive 比
-          <b>+54〜57%</b> 改善。5フォールド・バックテストでも文献標準分割でも<b>一貫して大きく正</b>。
-          点検リードタイムを確保できる。</li>
-      <li><b>② 穏やかで持続性の高い変圧器(ETTh1型)＝価値は不確実</b>：自己相関 lag1={e1['acf_lag1']:.2f}
-          で持続予測が極めて強い。時系列分割では +9% だが<b>文献標準分割では負</b>に転じ、
-          <b>評価期間に依存して頑健でない</b>。導入前に資産別の検証が必須。</li>
-      <li><b>③ 24h 先は予測可能性の天井</b>：どの分割でも naive 比 ほぼ 0〜負
-          ＝<b>持続予測を安定的に超えない</b>。先読みには外気温予報など外部データが必要。</li>
-      <li><b>④ 最大のリスクは分布シフト</b>（季節で平均油温が大きく変化）→ 固定閾値は不適・<b>定期再学習</b>前提。</li>
-    </ul>
-    <div class="callout">この結論はバックテスト・シード・分割方法の感度分析で裏取り済み。
-      データは公開ベンチマーク（顧客実データではない）。リーク防止は全工程で pytest(23件) 検証。</div>'''))
+    "結論：ML の価値は変圧器の「変動性」で決まる。変動大は大きく安定、穏やかは不確実",
+    f'''<div class="cols">
+      <div>{img("result_value_heatmap.png")}
+        <div class="cap">色=naive持続予測に対する改善率（緑ほど価値大）</div></div>
+      <div>
+        <ul class="tight">
+          <li><b>変動大(ETTh2型)＝価値あり</b>：6〜12h先で +54〜57%。どの分割でも安定。</li>
+          <li><b>穏やか(ETTh1型)＝不確実</b>：lag1={e1['acf_lag1']:.2f} で持続予測が強い。
+              分割を変えると +9%↔負に振れる。資産別の事前検証が必要。</li>
+          <li><b>24h先＝天井</b>：日次周期を持続予測が捕捉。外気温など外部データが要る。</li>
+          <li><b>最大リスク＝分布シフト</b>：季節で平均油温が変化。固定閾値は不可、定期再学習前提。</li>
+        </ul>
+        <div class="callout">公開データのみ（顧客実データ不使用）。リーク防止は
+          pytest 23件で全工程検証。</div>
+      </div>
+    </div>'''))
 
 # 3. 目的・スコープ・前提
 SLIDES.append(slide(
     "目的は「油温予測が運用・保全判断にどれだけ価値を出すか」の定量検証",
-    f'''<div class="cols">
+    f'''<div class="cols even">
       <div>
         <h3>検証スコープ</h3>
-        <ul>
-          <li>目的変数：オイル温度 OT（°C）の将来予測</li>
-          <li>データ：ETTh1/h2（1時間粒度・約2年）を主対象、m1/m2 で粒度差を確認</li>
-          <li>評価：複数ホライズン（1/6/12/24h 先）で MAE・RMSE と
-              ベースライン比改善率(skill)</li>
+        <ul class="tight">
+          <li>予測対象：油温 OT（°C）の将来値</li>
+          <li>データ：ETTh1/h2（1h粒度・約2年）。m1/m2 で粒度差も確認</li>
+          <li>評価：1/6/12/24h 先で MAE・RMSE と naive 比改善率(skill)</li>
           <li>業務価値：高温時間帯の早期検知（Precision/Recall）に翻訳</li>
         </ul>
-      </div>
-      <div>
         <h3>置いた仮定（質問不可のため明記）</h3>
-        <ul>
-          <li>「t=T の特徴量を使用してよい」を、<b>負荷は運用計画で既知</b>と解釈し、
-              <b>未来負荷を与えた上限実験</b>も別途実施</li>
-          <li>主結果は<b>過去情報のみ</b>で算出（運用上最も安全な前提）</li>
-          <li>分割は時系列順 60/20/20（シャッフル禁止）。文献標準 12/4/4 分割でも検証（感度分析）</li>
-          <li>MAPE は OT が 0/負を取るため不採用、MAE/RMSE(°C) を採用</li>
+        <ul class="tight">
+          <li>「t=T の特徴量を使ってよい」→ <b>負荷は運用計画で既知</b>と解釈し上限実験も実施。
+              主結果は<b>過去情報のみ</b>（最も安全な前提）。</li>
+          <li>分割は時系列順 60/20/20。文献標準 12/4/4 でも検証。</li>
+          <li>MAPE は OT が 0/負を取るため不採用、MAE/RMSE(°C)。</li>
         </ul>
       </div>
+      <div>{img("eda_ETTh1_series.png")}
+        <div class="cap">予測対象：油温 OT の時系列（ETTh1・約2年）。季節で水準が大きく動く</div></div>
     </div>'''))
 
 # 4. EDA① データ品質・非定常性
 SLIDES.append(slide(
     "データは高品質だが、季節による強い非定常性（分布シフト）を持つ",
-    f'''<div class="cols">
+    f'''<div class="cols even">
       <div>{img("eda_ETTh1_series.png")}<div class="cap">OT 時系列（ETTh1, 約2年）</div></div>
       <div>{img("eda_ETTh1_shift.png")}<div class="cap">期間別 OT 分布</div></div>
     </div>
@@ -145,7 +145,7 @@ SLIDES.append(slide(
 # 5. EDA② 熱慣性と周期性 → アプローチ根拠
 SLIDES.append(slide(
     "油温は強い熱慣性と日次・年次の周期を持つ → 自己回帰＋周期特徴が本質",
-    f'''<div class="cols">
+    f'''<div class="cols even">
       <div>{img("eda_ETTh1_acf.png")}<div class="cap">自己相関（熱慣性）</div></div>
       <div>{img("eda_ETTh1_cycles.png")}<div class="cap">時刻別・月別の平均 OT</div></div>
     </div>
@@ -158,7 +158,7 @@ SLIDES.append(slide(
 # 6. EDA③ 同時刻相関は弱い
 SLIDES.append(slide(
     "瞬時の負荷だけでは油温を説明できない（熱は時間遅れで蓄積する）",
-    f'''<div class="cols">
+    f'''<div class="cols even">
       <div>{img("eda_ETTh1_corr.png")}<div class="cap">ETTh1: OT と負荷の同時刻相関</div></div>
       <div>{img("eda_ETTh2_corr.png")}<div class="cap">ETTh2: 同（相対的に強い）</div></div>
     </div>
@@ -171,31 +171,22 @@ SLIDES.append(slide(
 
 # 7. アプローチ：検証設計とモデル
 SLIDES.append(slide(
-    "「厳格な時系列検証 × 差分予測」を設計の核に据えた",
+    "設計の核は「厳格な時系列検証 × 差分予測」",
     f'''<div class="cols">
+      <div>{img("eda_ETTh1_acf.png")}
+        <div class="cap">自己相関：1h後={e1['acf_lag1']:.2f}・24h後={e1['acf_lag24']:.2f}
+          → 持続予測が強敵</div></div>
       <div>
-        <h3>リーク防止（最重要）</h3>
+        <h3>差分予測（設計上の意思決定）</h3>
+        <div class="callout2">OT(t+h) を直接当てず、<b>変化量 Δ=OT(t+h)−OT(t)</b> を学習し OT(t) に加算。</div>
         <ul class="tight">
-          <li>時系列順分割・シャッフル禁止、境界重複なし</li>
-          <li>標準化統計は<b>train のみで推定</b></li>
-          <li>特徴量は時刻 t 以前のみ（因果 rolling, shift≥0）</li>
-          <li>ハイパラ選択は TimeSeriesSplit / val で early stopping</li>
+          <li>持続予測を錨にする → <b>最悪でも naive 同等</b>、系統的変化だけ学習。</li>
+          <li>直接予測は naive 未達。差分予測で中期まで安定して上回る。</li>
         </ul>
-        <h3>モデル比較</h3>
+        <h3>リーク防止／モデル</h3>
         <ul class="tight">
-          <li>naive 持続・季節持続（ベースライン）</li>
-          <li>Ridge（線形の目安）／<b>LightGBM（本命）</b></li>
-        </ul>
-      </div>
-      <div>
-        <h3>設計上の意思決定：差分予測</h3>
-        <div class="callout2">目的を OT(t+h) ではなく
-          <b>変化量 Δ=OT(t+h)−OT(t)</b> に置き、予測を OT(t) に加算。</div>
-        <ul class="tight">
-          <li>持続予測を錨にするため、<b>最悪でも naive と同等</b>。</li>
-          <li>日次サイクル等の<b>系統的変化のみ</b>を学習し改善。</li>
-          <li>直接 OT(t+h) 予測は naive に負けたが、差分予測で<b>中期まで安定して上回る</b>
-              （24h は後述の通り天井）。</li>
+          <li>時系列順分割・train限定スケーリング・因果特徴（shift≥0）。</li>
+          <li>ベースライン(持続/季節持続)＋Ridge＋<b>LightGBM(本命)</b>を比較。</li>
         </ul>
       </div>
     </div>'''))
@@ -225,8 +216,8 @@ SLIDES.append(slide(
     f'''<div class="cols">
       <div>{img("result_split_sensitivity.png")}<div class="cap">時系列60/20/20 vs 文献Informer12/4/4 の skill</div></div>
       <div>
-        <p class="muted" style="font-size:12.5px">「1つの分割で良かった」を結論にしない。
-        時系列分割と<b>文献標準(Informer 12/4/4)</b>を比較し、結論が分割に依存しないかを検証。</p>
+        <p class="muted">時系列分割に加え<b>文献標準(Informer 12/4/4)</b>でも評価し、
+        結論が分割に依存しないか確認。</p>
         <ul class="tight">
           <li><b>ETTh2</b>：両分割で 6〜12h が +54〜57%＝<b>頑健</b>。価値の主張は信頼できる。</li>
           <li><b>ETTh1</b>：時系列分割では +9% だが<b>文献分割では −6〜−9%</b>に反転。
@@ -293,28 +284,25 @@ SLIDES.append(slide(
 # 10. 業務価値
 SLIDES.append(slide(
     "誰が何のために使うか：用途は2つ。早期警報は今すぐ有効、異常検知は要追加データ",
-    '''<div class="cols">
+    '''<div class="cols even">
       <div>
         <h3>想定ユーザーと用途</h3>
-        <ul class="tight">
-          <li><b>運用オペレーター（制御室）</b>：高油温の<b>事前警報</b>→負荷抑制・冷却強化。
-              必要なのは MAE でなく<b>h時間前の検知率と低誤報</b>。</li>
-          <li><b>信頼性技師／設備管理</b>：<b>劣化・異常の早期検知</b>（予防保全の本丸）。
-              期待温度からの<b>残差</b>で兆候を捉える。</li>
-          <li>保全計画担当：点検の<b>優先順位付け</b>（リスクランキング）。</li>
-        </ul>
-        <div class="callout2" style="font-size:12px">「業務で誰が何に使うか」を起点に、
-          MAE ではなく<b>用途別の性能指標</b>で検証した。</div>
+        <div class="card"><span class="tag">運用</span><b>運用オペレーター</b>：高油温の<b>事前警報</b>
+          → 負荷抑制・冷却強化。必要なのは MAE でなく h時間前の検知率と低誤報。</div>
+        <div class="card"><span class="tag">保全</span><b>信頼性技師／設備管理</b>：<b>劣化・異常の早期検知</b>
+          （予防保全の本丸）。期待温度からの残差で兆候を捉える。</div>
+        <div class="card"><span class="tag">計画</span><b>保全計画担当</b>：点検の<b>優先順位付け</b>
+          （リスクランキング）。</div>
       </div>
       <div>
         <h3>検証の結論（用途別）</h3>
         <ul class="tight">
           <li><b>① 早期警報＝今すぐ有効</b>。変動大の変圧器で実証済（次スライド）。</li>
-          <li><b>② 異常検知＝今のデータでは不足</b>。早期警報に最適な<b>自己回帰モデルは
-              故障を「追従吸収」し検知不能</b>（次スライドで実証）。
-              ソフトセンサが正解だが<b>外気温データ</b>が要る。</li>
-          <li>→ <b>段階導入</b>：まず早期警報を実装、異常検知はフェーズ2（外部データ取得後）。</li>
+          <li><b>② 異常検知＝今のデータでは不足</b>。早期警報に最適な自己回帰モデルは
+              故障を<b>追従吸収</b>し検知不能。ソフトセンサが正解だが外気温データが要る。</li>
+          <li>→ <b>段階導入</b>：まず早期警報、異常検知はフェーズ2（外部データ取得後）。</li>
         </ul>
+        <div class="callout2">MAE でなく<b>用途別の性能指標</b>で検証したのが要点。</div>
       </div>
     </div>'''))
 
@@ -347,8 +335,7 @@ SLIDES.append(slide(
     f'''<div class="cols">
       <div>{img("result_model_compare.png")}<div class="cap">Ridge/LightGBM/MLP/DLinear を同一の差分予測で比較（5フォールド平均）</div></div>
       <div>
-        <p class="muted" style="font-size:12.5px">「なぜ LightGBM か」を実証。全モデルを同じ差分予測に統一し、
-        モデルクラスの差だけを 5 フォールドで比較した。</p>
+        <p class="muted">全モデルを同じ差分予測に統一し、モデルの差だけを5フォールドで比較。</p>
         <ul class="tight">
           <li><b>LightGBM が総合最良</b>：ETTh2 で +{100*mc['ETTh2']['h6']['lgbm']:.0f}%（h6）と最高、
               ETTh1 でも安定して正。<b>表形式・非線形・少データに強く本命として妥当</b>。</li>
@@ -408,21 +395,15 @@ SLIDES.append(slide(
 
 # 11. 工夫・意思決定まとめ（検証ループの実践）
 SLIDES.append(slide(
-    "工夫の要点：1発出しでなく「仮説→検証→採否」の反復で結論を固めた",
+    "工夫：1発出しせず「仮説→検証→採否」を反復して結論を固めた",
     '''<ul class="big">
-      <li><b>時系列リークの体系的遮断</b>を自動テスト（pytest 23件）で恒常検証。
-          さらに<b>結果を独立監査</b>：純ノイズでモデルが理論下限を割らないこと＋
-          故意リークが検出されること＋指標の独立再計算一致、で<b>「漏洩なし」を裏取り</b>。</li>
-      <li><b>差分予測</b>で直接予測のベースライン未達を解消（中期まで安定して naive 超え）。</li>
-      <li><b>網羅的な検証</b>：バックテスト・<b>分割感度</b>（文献12/4/4）・<b>シード感度</b>・
-          fold数感度・<b>特徴量/モデル/目的のアブレーション</b>・粒度（ETTm）まで潰し、
-          結論を「変動性レジーム依存」へ正直に是正。</li>
-      <li><b>仮説を棄却する勇気</b>：負荷の移動平均（熱蓄積）特徴は交差検証で頑健改善なく不採用。
-          アブレーションでも<b>負荷特徴は無用</b>と確認。</li>
-      <li><b>結果の独立監査</b>：指標を生 LightGBM/手計算で再計算し一致、ノイズ下限・陽性対照で
-          <b>リーク不在を裏取り</b>、決定性も確認。</li>
-      <li><b>データ駆動の報告</b>（metrics/backtest JSON から自動注入）＋<b>セキュリティ</b>
-          （公開データのみ・秘密非混入・機密PDF除外）。</li>
+      <li><b>リーク遮断を自動テスト化</b>（pytest 23件）。加えてノイズ下限・故意リーク検出・
+          指標の独立再計算で「漏洩なし」を確認。</li>
+      <li><b>差分予測</b>で直接予測の baseline 未達を解消し、中期まで naive 超え。</li>
+      <li><b>過大評価を避ける検証</b>：バックテスト・分割感度・シード・アブレーションで、
+          結論を「変動性レジーム依存」へ正直に修正。</li>
+      <li><b>効かない仮説は棄却</b>：負荷の移動平均特徴は交差検証で改善なく不採用。</li>
+      <li><b>再現性とセキュリティ</b>：数値は JSON から自動注入、公開データのみ・機密PDF除外。</li>
     </ul>'''))
 
 # 12. 限界と改善方針
@@ -477,27 +458,39 @@ HTML = f'''<!doctype html><html lang="ja"><head><meta charset="utf-8"><style>
 html, body {{ font-family: "Yu Gothic","Meiryo","Hiragino Kaku Gothic ProN",sans-serif;
   color: #1a2233; }}
 @page {{ size: 297mm 167mm; margin: 0; }}
-.slide {{ width: 297mm; height: 167mm; padding: 12mm 14mm 10mm; position: relative;
-  page-break-after: always; overflow: hidden; background: #ffffff; }}
-.msgbar {{ border-left: 8px solid #2f5cff; padding-left: 12px; margin-bottom: 10px; }}
+.slide {{ width: 297mm; height: 167mm; padding: 11mm 14mm 12mm; position: relative;
+  page-break-after: always; overflow: hidden; background: #ffffff;
+  display: flex; flex-direction: column; }}
+.msgbar {{ border-left: 8px solid #2f5cff; padding-left: 12px; margin-bottom: 4px; flex: none; }}
 .kicker {{ color:#2f5cff; font-size: 12px; font-weight: 700; letter-spacing:.05em; }}
-.msgbar h1 {{ font-size: 23px; line-height: 1.35; color:#10204a; }}
-.body {{ font-size: 15px; line-height: 1.6; }}
-.cols {{ display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }}
-.cols img {{ border:1px solid #e3e7ef; border-radius:4px; }}
-.cap {{ font-size: 11px; color:#6b7280; text-align:center; margin-top:3px; }}
-ul, ol {{ padding-left: 20px; }}
-ul.big li {{ margin: 9px 0; font-size: 15.5px; }}
-ul.tight li {{ margin: 5px 0; }}
-ul.tight, .cols ul {{ font-size: 13.5px; }}
-h3 {{ font-size: 14px; color:#2f5cff; margin: 4px 0 6px; }}
-.callout {{ margin-top:12px; background:#eef3ff; border:1px solid #c9d8ff;
-  border-radius:6px; padding:8px 12px; font-size:12.5px; color:#214; }}
+.msgbar h1 {{ font-size: 24px; line-height: 1.3; color:#10204a; }}
+/* 本文は残り高さを使って縦に充填（空白を作らない） */
+.body {{ flex: 1; font-size: 16.5px; line-height: 1.65;
+  display: flex; flex-direction: column; justify-content: center; gap: 8px; }}
+.cols {{ display: grid; grid-template-columns: 1.12fr 0.88fr; gap: 22px;
+  align-items: center; }}
+.cols.even {{ grid-template-columns: 1fr 1fr; }}
+.cols img {{ border:1px solid #e3e7ef; border-radius:5px; box-shadow:0 1px 6px rgba(20,40,90,.07); }}
+.cap {{ font-size: 12px; color:#6b7280; text-align:center; margin-top:5px; }}
+ul, ol {{ padding-left: 22px; }}
+ul.big li {{ margin: 15px 0; font-size: 18px; line-height:1.6; }}
+ul.tight li {{ margin: 9px 0; }}
+ul.tight, .cols ul {{ font-size: 15px; line-height:1.6; }}
+h3 {{ font-size: 15.5px; color:#2f5cff; margin: 8px 0 7px; }}
+.callout {{ margin-top:14px; background:#eef3ff; border:1px solid #c9d8ff;
+  border-radius:6px; padding:11px 14px; font-size:14px; color:#214; }}
 .callout2 {{ background:#fff5e9; border:1px solid #ffd9ad; border-radius:6px;
-  padding:8px 12px; font-size:13px; margin-bottom:6px; }}
-.muted {{ color:#6b7280; font-size:12px; }}
-.feat li {{ margin:3px 0; }}
-.foot {{ position:absolute; bottom:6mm; left:14mm; right:14mm; display:flex;
+  padding:10px 13px; font-size:14px; margin-bottom:6px; }}
+.muted {{ color:#6b7280; font-size:13.5px; }}
+.feat li {{ margin:4px 0; }}
+.hero {{ text-align:center; }}
+.hero img {{ width: 82%; }}
+.card {{ background:#f6f8fd; border:1px solid #dde5f3; border-left:4px solid #2f5cff;
+  border-radius:6px; padding:11px 14px; margin:9px 0; font-size:14.5px; line-height:1.55; }}
+.card b {{ color:#10204a; }}
+.tag {{ display:inline-block; background:#2f5cff; color:#fff; font-size:11px;
+  padding:1px 8px; border-radius:10px; margin-right:6px; vertical-align:middle; }}
+.foot {{ position:absolute; bottom:5mm; left:14mm; right:14mm; display:flex;
   justify-content:space-between; font-size:10px; color:#9aa3b2;
   border-top:1px solid #eef0f4; padding-top:4px; }}
 /* cover */
