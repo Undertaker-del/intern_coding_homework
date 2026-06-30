@@ -1,0 +1,42 @@
+# クリーン環境（GitHub の ubuntu ランナー）での再現性を自動実証する CI。
+# 参考: GitHub Actions / Building and testing Python
+#   https://docs.github.com/actions/automating-builds-and-tests/building-and-testing-python
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  reproduce:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies (requirements.txt のみ)
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      # リーク検証を含む全テスト = 提出物の VerifyCommand
+      - name: Run test suite (leakage + integration + audit)
+        run: pytest tests -q
+
+      # end-to-end スモーク: クリーン環境で学習・評価が走り metrics を生成できることを実証
+      - name: End-to-end smoke (pipeline ETTh2)
+        run: python src/pipeline.py --dataset ETTh2
+
+      - name: Upload reproduced metrics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reproduced-metrics
+          path: reports/metrics_ETTh2.json
