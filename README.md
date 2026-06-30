@@ -1,5 +1,7 @@
 # 変圧器オイル温度予測 PoC（ETT データセット）
 
+[![ci](https://github.com/Undertaker-del/intern_coding_homework/actions/workflows/ci.yml/badge.svg)](https://github.com/Undertaker-del/intern_coding_homework/actions/workflows/ci.yml)
+
 ATHENA TECHNOLOGIES INC. ML エンジニア選考課題。電力用変圧器のオイル温度 (OT) を
 将来予測し、予防保全への移行価値を検証する PoC の実装・報告一式。
 
