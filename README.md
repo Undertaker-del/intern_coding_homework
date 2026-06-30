@@ -76,6 +76,21 @@ python -m pip install -r requirements.txt   # Python 3.12 推奨
 py -3.12 run_all.py
 ```
 
+### 再現性の保証（クリーン環境での検証）
+
+本リポジトリは**クローンするだけで他環境で再現可能**な自己完結構成です。
+
+- **データ同梱**：`data/` に ETT の CSV（公開・MIT）を同梱。外部取得不要。
+- **相対パスのみ**：パスは `Path(__file__)` 基準で解決（絶対パス・環境依存なし）。
+- **CI で自動実証**：`.github/workflows/ci.yml` が push 毎に **ubuntu / Python 3.12** の
+  クリーンランナーで `pip install -r requirements.txt` → `pytest`（リーク検証含む全23件）
+  → `pipeline.py` の end-to-end スモークを実行。**第三者環境での再現を継続的に保証**する。
+- ローカルでも `git clone` → 新規 venv → `pip install -r requirements.txt` → `pytest tests -q`
+  で同一結果を確認済み。
+
+> 注：`slides/render.py`（PDF 化）のみ Edge headless（Windows）依存。報告 PDF は
+> `slides/PoC_report.pdf` に同梱済みのため、再現に再レンダリングは不要。
+
 個別実行:
 
 ```bash
